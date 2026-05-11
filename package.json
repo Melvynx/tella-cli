@@ -1,10 +1,34 @@
 {
   "name": "tella-cli",
   "version": "0.1.0",
-  "description": "CLI for the tella API",
+  "description": "CLI for the Tella video API - videos, clips, playlists, webhooks. Made with api2cli.dev.",
   "type": "module",
   "bin": {
     "tella-cli": "./dist/index.js"
+  },
+  "files": [
+    "dist/index.js",
+    "README.md"
+  ],
+  "keywords": [
+    "tella",
+    "cli",
+    "video",
+    "transcript",
+    "screen-recording",
+    "api2cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Melvynx/tella-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Melvynx/tella-cli/issues"
+  },
+  "homepage": "https://github.com/Melvynx/tella-cli#readme",
+  "license": "MIT",
+  "engines": {
+    "bun": ">=1.0"
   },
   "scripts": {
     "build": "bun build src/index.ts --outfile dist/index.js --target bun",
