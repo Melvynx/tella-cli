@@ -7,7 +7,7 @@ Manage videos, clips, playlists, and webhooks from the terminal or any AI agent.
 ## Install
 
 ```bash
-npx api2cli install melvynx/tella-cli
+npx api2cli install Melvynx/tella-cli
 ```
 
 This clones the repo, builds the CLI, links it to your PATH, and installs the AgentSkill.
@@ -15,7 +15,7 @@ This clones the repo, builds the CLI, links it to your PATH, and installs the Ag
 ### Install AgentSkill only
 
 ```bash
-npx skills add melvynx/tella-cli
+npx skills add Melvynx/tella-cli
 ```
 
 ## Quick Start
