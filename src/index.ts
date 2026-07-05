@@ -5,6 +5,7 @@ import { authCommand } from "./commands/auth.js";
 import { videosResource } from "./resources/videos.js";
 import { clipsResource } from "./resources/clips.js";
 import { playlistsResource } from "./resources/playlists.js";
+import { sourcesResource } from "./resources/sources.js";
 import { webhooksResource } from "./resources/webhooks.js";
 
 const program = new Command();
@@ -31,6 +32,7 @@ program.addCommand(authCommand);
 program.addCommand(videosResource);
 program.addCommand(clipsResource);
 program.addCommand(playlistsResource);
+program.addCommand(sourcesResource);
 program.addCommand(webhooksResource);
 
 program.parse();

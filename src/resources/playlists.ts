@@ -27,6 +27,7 @@ interface CreateOpts {
 interface UpdateOpts {
   name?: string;
   description?: string;
+  emoji?: string;
   linkScope?: string;
   password?: string;
   searchEngineIndexingEnabled?: string;
@@ -36,6 +37,29 @@ interface UpdateOpts {
 
 interface AddVideoOpts {
   videoId: string;
+  json?: boolean;
+  format?: string;
+}
+
+interface GroupCreateOpts {
+  name: string;
+  emoji?: string;
+  visibility?: string;
+  json?: boolean;
+  format?: string;
+}
+
+interface GroupUpdateOpts {
+  name?: string;
+  emoji?: string;
+  position?: string;
+  json?: boolean;
+  format?: string;
+}
+
+interface MoveToGroupOpts {
+  groupId?: string;
+  position?: string;
   json?: boolean;
   format?: string;
 }
@@ -136,6 +160,7 @@ playlistsResource
   .argument("<id>", "Playlist ID")
   .option("--name <name>", "New playlist name")
   .option("--description <text>", "New description")
+  .option("--emoji <emoji>", "Unicode emoji for the playlist")
   .option("--link-scope <scope>", "Access level: public, private, password")
   .option("--password <pw>", "Password (required when link-scope=password)")
   .option(
@@ -153,11 +178,124 @@ playlistsResource
       const body: Record<string, unknown> = {};
       if (opts.name !== undefined) body.name = opts.name;
       if (opts.description !== undefined) body.description = opts.description;
+      if (opts.emoji !== undefined) body.emoji = opts.emoji;
       if (opts.linkScope) body.linkScope = opts.linkScope;
       if (opts.password) body.password = opts.password;
       const seo = parseBool(opts.searchEngineIndexingEnabled);
       if (seo !== undefined) body.searchEngineIndexingEnabled = seo;
       const data = await client.patch(`/v1/playlists/${id}`, body);
+      output(data, { json: opts.json, format: opts.format });
+    } catch (err) {
+      handleError(err, opts.json);
+    }
+  });
+
+playlistsResource
+  .command("list-groups")
+  .description("List sidebar playlist groups")
+  .option("--visibility <v>", "Filter by visibility: personal or org")
+  .option("--fields <cols>", "Comma-separated columns to display")
+  .option("--json", "Output as JSON")
+  .option("--format <fmt>", "Output format: text, json, csv, yaml")
+  .addHelpText("after", "\nExample:\n  tella-cli playlists list-groups --visibility org")
+  .action(async (opts: ListOpts) => {
+    try {
+      const params: Record<string, string> = {};
+      if (opts.visibility) params.visibility = opts.visibility;
+      const data = await client.get("/v1/playlist-groups", params);
+      output(data, {
+        json: opts.json,
+        format: opts.format,
+        fields: opts.fields?.split(","),
+      });
+    } catch (err) {
+      handleError(err, opts.json);
+    }
+  });
+
+playlistsResource
+  .command("create-group")
+  .description("Create a sidebar playlist group")
+  .requiredOption("--name <name>", "Group name")
+  .option("--emoji <emoji>", "Unicode emoji for the group")
+  .option("--visibility <v>", "personal or org")
+  .option("--json", "Output as JSON")
+  .option("--format <fmt>", "Output format: text, json, csv, yaml")
+  .addHelpText(
+    "after",
+    '\nExample:\n  tella-cli playlists create-group --name "Marketing" --visibility org',
+  )
+  .action(async (opts: GroupCreateOpts) => {
+    try {
+      const body: Record<string, unknown> = { name: opts.name };
+      if (opts.emoji) body.emoji = opts.emoji;
+      if (opts.visibility) body.visibility = opts.visibility;
+      const data = await client.post("/v1/playlist-groups", body);
+      output(data, { json: opts.json, format: opts.format });
+    } catch (err) {
+      handleError(err, opts.json);
+    }
+  });
+
+playlistsResource
+  .command("update-group")
+  .description("Rename, re-icon, or reorder a sidebar playlist group")
+  .argument("<id>", "Playlist group ID")
+  .option("--name <name>", "New group name")
+  .option("--emoji <emoji>", "Unicode emoji for the group")
+  .option("--position <n>", "0-based position in the sidebar section")
+  .option("--json", "Output as JSON")
+  .option("--format <fmt>", "Output format: text, json, csv, yaml")
+  .addHelpText(
+    "after",
+    '\nExample:\n  tella-cli playlists update-group pg_abc123 --name "Growth"',
+  )
+  .action(async (id: string, opts: GroupUpdateOpts) => {
+    try {
+      const body: Record<string, unknown> = {};
+      if (opts.name !== undefined) body.name = opts.name;
+      if (opts.emoji !== undefined) body.emoji = opts.emoji;
+      if (opts.position !== undefined) body.position = Number(opts.position);
+      const data = await client.patch(`/v1/playlist-groups/${id}`, body);
+      output(data, { json: opts.json, format: opts.format });
+    } catch (err) {
+      handleError(err, opts.json);
+    }
+  });
+
+playlistsResource
+  .command("delete-group")
+  .description("Delete a sidebar playlist group without deleting its playlists")
+  .argument("<id>", "Playlist group ID")
+  .option("--json", "Output as JSON")
+  .addHelpText("after", "\nExample:\n  tella-cli playlists delete-group pg_abc123")
+  .action(async (id: string, opts: ListOpts) => {
+    try {
+      await client.delete(`/v1/playlist-groups/${id}`);
+      output({ deleted: true, id }, { json: opts.json });
+    } catch (err) {
+      handleError(err, opts.json);
+    }
+  });
+
+playlistsResource
+  .command("move-to-group")
+  .description("Move a playlist into a sidebar group, or omit --group-id to ungroup it")
+  .argument("<playlistId>", "Playlist ID")
+  .option("--group-id <id>", "Target playlist group ID")
+  .option("--position <n>", "0-based position in the target group or ungrouped section")
+  .option("--json", "Output as JSON")
+  .option("--format <fmt>", "Output format: text, json, csv, yaml")
+  .addHelpText(
+    "after",
+    "\nExample:\n  tella-cli playlists move-to-group pl_abc123 --group-id pg_xyz --position 0",
+  )
+  .action(async (playlistId: string, opts: MoveToGroupOpts) => {
+    try {
+      const body: Record<string, unknown> = {};
+      if (opts.groupId !== undefined) body.groupId = opts.groupId;
+      if (opts.position !== undefined) body.position = Number(opts.position);
+      const data = await client.patch(`/v1/playlists/${playlistId}`, body);
       output(data, { json: opts.json, format: opts.format });
     } catch (err) {
       handleError(err, opts.json);

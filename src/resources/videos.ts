@@ -20,6 +20,8 @@ interface UpdateOpts {
   allowedEmbedDomains?: string;
   customThumbnailUrl?: string;
   defaultPlaybackRate?: string;
+  dimensions?: string;
+  studioSound?: string;
   captionsDefaultEnabled?: string;
   commentEmailsEnabled?: string;
   commentsEnabled?: string;
@@ -58,13 +60,25 @@ interface DuplicateOpts {
   name?: string;
   trimStartTimeMs?: string;
   trimEndTimeMs?: string;
+  startTime?: string;
+  endTime?: string;
+  chapterIndex?: string;
   json?: boolean;
   format?: string;
 }
 
 interface CollabOpts {
-  email: string;
-  role: string;
+  email?: string;
+  role?: string;
+  json?: boolean;
+  format?: string;
+}
+
+interface GetOpts {
+  includeTranscript?: boolean;
+  includeChapters?: boolean;
+  includeThumbnails?: boolean;
+  includeExports?: boolean;
   json?: boolean;
   format?: string;
 }
@@ -112,12 +126,21 @@ videosResource
   .command("get")
   .description("Get a single video's metadata")
   .argument("<id>", "Video ID")
+  .option("--include-transcript", "Include transcript text when supported")
+  .option("--include-chapters", "Include chapter markers when supported")
+  .option("--include-thumbnails", "Include thumbnail URLs when supported")
+  .option("--include-exports", "Include export status when supported")
   .option("--json", "Output as JSON")
   .option("--format <fmt>", "Output format: text, json, csv, yaml")
   .addHelpText("after", "\nExample:\n  tella-cli videos get vid_abc123")
-  .action(async (id: string, opts: ListOpts) => {
+  .action(async (id: string, opts: GetOpts) => {
     try {
-      const data = await client.get(`/v1/videos/${id}`);
+      const params: Record<string, string> = {};
+      if (opts.includeTranscript) params.includeTranscript = "true";
+      if (opts.includeChapters) params.includeChapters = "true";
+      if (opts.includeThumbnails) params.includeThumbnails = "true";
+      if (opts.includeExports) params.includeExports = "true";
+      const data = await client.get(`/v1/videos/${id}`, params);
       output(data, { json: opts.json, format: opts.format });
     } catch (err) {
       handleError(err, opts.json);
@@ -141,6 +164,8 @@ videosResource
   )
   .option("--custom-thumbnail-url <url>", "Custom thumbnail image URL")
   .option("--default-playback-rate <rate>", "Default playback rate (0.5-2.0)")
+  .option("--dimensions <json>", 'Canvas size JSON, e.g. \'{"width":1080,"height":1920}\'')
+  .option("--studio-sound <bool>", "Enable Studio Sound AI audio enhancement (true/false)")
   .option("--captions-default-enabled <bool>", "Show captions by default (true/false)")
   .option("--comment-emails-enabled <bool>", "Notify on new comments (true/false)")
   .option("--comments-enabled <bool>", "Allow comments (true/false)")
@@ -168,7 +193,9 @@ videosResource
       if (opts.customThumbnailUrl) body.customThumbnailURL = opts.customThumbnailUrl;
       if (opts.defaultPlaybackRate)
         body.defaultPlaybackRate = Number(opts.defaultPlaybackRate);
+      if (opts.dimensions) body.dimensions = JSON.parse(opts.dimensions);
       const bools: [string, string | undefined][] = [
+        ["studioSound", opts.studioSound],
         ["captionsDefaultEnabled", opts.captionsDefaultEnabled],
         ["commentEmailsEnabled", opts.commentEmailsEnabled],
         ["commentsEnabled", opts.commentsEnabled],
@@ -212,6 +239,9 @@ videosResource
   .option("--name <name>", "Name for the duplicate")
   .option("--trim-start-ms <ms>", "Trim start time (milliseconds)")
   .option("--trim-end-ms <ms>", "Trim end time (milliseconds)")
+  .option("--start-time <seconds>", "Trim start time in seconds")
+  .option("--end-time <seconds>", "Trim end time in seconds")
+  .option("--chapter-index <n>", "Extract a specific chapter by 0-based index")
   .option("--json", "Output as JSON")
   .option("--format <fmt>", "Output format: text, json, csv, yaml")
   .addHelpText(
@@ -222,14 +252,63 @@ videosResource
     try {
       const body: Record<string, unknown> = {};
       if (opts.name) body.name = opts.name;
-      if (opts.trimStartTimeMs && opts.trimEndTimeMs) {
+      if (opts.chapterIndex !== undefined) {
+        body.trim = { chapterIndex: Number(opts.chapterIndex) };
+      } else if (opts.startTime !== undefined && opts.endTime !== undefined) {
         body.trim = {
-          startTimeMs: Number(opts.trimStartTimeMs),
-          endTimeMs: Number(opts.trimEndTimeMs),
+          startTime: Number(opts.startTime),
+          endTime: Number(opts.endTime),
+        };
+      } else if (opts.trimStartTimeMs && opts.trimEndTimeMs) {
+        body.trim = {
+          startTime: Number(opts.trimStartTimeMs) / 1000,
+          endTime: Number(opts.trimEndTimeMs) / 1000,
         };
       }
       const data = await client.post(`/v1/videos/${id}/duplicate`, body);
       output(data, { json: opts.json, format: opts.format });
+    } catch (err) {
+      handleError(err, opts.json);
+    }
+  });
+
+videosResource
+  .command("update-collaborator")
+  .description("Change a collaborator's role on a video")
+  .argument("<id>", "Video ID")
+  .argument("<userId>", "Collaborator user ID")
+  .requiredOption("--role <role>", "editor or viewer")
+  .option("--json", "Output as JSON")
+  .option("--format <fmt>", "Output format: text, json, csv, yaml")
+  .addHelpText(
+    "after",
+    "\nExample:\n  tella-cli videos update-collaborator vid_abc123 user_123 --role viewer",
+  )
+  .action(async (id: string, userId: string, opts: CollabOpts) => {
+    try {
+      const data = await client.patch(`/v1/videos/${id}/collaborators/${userId}`, {
+        role: opts.role,
+      });
+      output(data, { json: opts.json, format: opts.format });
+    } catch (err) {
+      handleError(err, opts.json);
+    }
+  });
+
+videosResource
+  .command("remove-collaborator")
+  .description("Remove a collaborator from a video")
+  .argument("<id>", "Video ID")
+  .argument("<userId>", "Collaborator user ID")
+  .option("--json", "Output as JSON")
+  .addHelpText(
+    "after",
+    "\nExample:\n  tella-cli videos remove-collaborator vid_abc123 user_123",
+  )
+  .action(async (id: string, userId: string, opts: CollabOpts) => {
+    try {
+      await client.delete(`/v1/videos/${id}/collaborators/${userId}`);
+      output({ removed: true, id, userId }, { json: opts.json });
     } catch (err) {
       handleError(err, opts.json);
     }

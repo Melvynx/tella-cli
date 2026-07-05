@@ -11,7 +11,7 @@ export const APP_CLI = "tella-cli";
 export const BASE_URL = "https://api.tella.com";
 
 /** Auth type: bearer | api-key | basic | custom */
-export const AUTH_TYPE = "bearer";
+export const AUTH_TYPE: "bearer" | "api-key" | "basic" | "custom" = "bearer";
 
 /** Auth header name (e.g. Authorization, X-Api-Key) */
 export const AUTH_HEADER = "Authorization";

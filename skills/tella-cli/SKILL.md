@@ -1,6 +1,6 @@
 ---
 name: tella
-description: "Manage Tella via CLI - videos, clips, playlists, webhooks. Use when user mentions 'tella', 'tella.tv', 'tella video', 'screen recording', 'video transcript', 'clip thumbnail', 'video export', 'remove filler words', 'add zoom to video', 'blur video', 'highlight video', 'playlist of videos', or wants to interact with the Tella video recording/editing API."
+description: "Manage Tella videos via CLI. Use for Tella videos, sources, clips, transcripts, thumbnails, exports, filler-word removal, zooms, blurs, highlights, overlays, sound effects, playlists, webhooks, or video edits."
 category: video
 ---
 
@@ -15,19 +15,21 @@ Use the `tella-cli` skill when you need to:
 - Generate video or clip thumbnails (jpg/png/webp/gif/mp4) at custom sizes/timestamps
 - Trigger video exports at 1080p or 4k, 30/60fps, with optional burned-in subtitles
 - Duplicate a video or clip, optionally trimmed
-- Edit clips: cut time ranges, reorder, remove filler words, find silent ranges
-- Add or update visual edits: blurs, highlights, layouts, zooms (manual or tracking)
-- Manage playlists and add/remove videos from them
-- Add workspace collaborators (editor or viewer) to a video
+- Create upload sources for clips, B-roll videos, overlays, and sound effects
+- Edit clips: upload, cut time ranges, cut by transcript word indices, reorder, remove filler words, find silent ranges
+- Add or update visual edits: blurs, highlights, layouts, B-roll media, auto layouts, zooms (manual/tracking/auto), overlays, and sound effects
+- Manage playlists, sidebar groups, and add/remove videos from them
+- Add, update, or remove workspace collaborators (editor or viewer) on a video
 - Create webhook endpoints, fetch signing secrets, and inspect recent deliveries
 
 ## Capabilities
 
 - Read every video and playlist in the workspace, including metadata, view counts, and share links
-- Push fine-grained edits to clips (cuts, reorders, blurs, highlights, layouts, zooms) without opening the Tella editor
+- Push fine-grained edits to clips (cuts, transcript cuts, backgrounds, blurs, highlights, layouts, B-roll, zooms, overlays, sound effects) without opening the Tella editor
 - Pull transcripts for downstream search, summarization, or accessibility workflows
 - Start exports and poll/list webhook deliveries to know when files are ready
 - Manage sharing: `linkScope`, password, allowed embed domains, search-engine indexing
+- Manage Studio Sound at video level and per-clip opt-out
 - Subscribe to events (`video.created`, `export.ready`, `transcript.ready`, etc.) and recover delivery messages
 
 ## Common Use Cases
@@ -37,6 +39,8 @@ Use the `tella-cli` skill when you need to:
 - "Export video Y at 4k 60fps with subtitles burned in"
 - "Add a blur over the credentials shown between 4.2s and 7.8s on this clip"
 - "Create a playlist 'Tutorials' and add these 5 videos to it"
+- "Upload this product demo as a clip, then add a logo overlay and a whoosh sound effect"
+- "Generate auto layouts and auto zooms for this demo clip"
 - "Wire up a webhook so I get notified when an export is ready"
 - "Remove filler words from this clip and then fetch the cleaned transcript"
 
@@ -59,8 +63,9 @@ Always use `--json` when calling commands programmatically.
 - Run `<resource> --help` or `<resource> <action> --help` when unsure of flags rather than guessing
 - For destructive actions (`delete`, `remove-*`), read first with `get`/`list` to confirm the target
 - Most clip mutations require both `<videoId>` and `<clipId>` as positional args (in that order)
-- Coordinates for masks (blurs, highlights) and zoom focus points are normalized to `0-1` of the canvas
+- Coordinates for masks (blurs, highlights) and zoom focus points use percentages `0-100` (`xPct`/`yPct`, `widthPct`/`heightPct`)
 - Times are in milliseconds (`*-ms` flags) unless the docs say otherwise
+- Structured MCP fields (`cuts`, `wordRanges`, `layout`, `media`, `background`, `point`, `dimensions`) are passed as JSON strings on CLI flags
 
 ## Authentication
 
@@ -80,26 +85,37 @@ Token is stored at `~/.config/tokens/tella-cli.txt` (chmod 600).
 | Action | Description | Key Flags |
 |--------|-------------|-----------|
 | `list` | List videos in the workspace | `--cursor`, `--limit`, `--playlist-id`, `--fields` |
-| `get <id>` | Get a single video's metadata | - |
-| `update <id>` | Update title, description, sharing, playback | `--name`, `--description`, `--link-scope`, `--password`, `--allowed-embed-domains`, `--custom-thumbnail-url`, `--default-playback-rate`, `--captions-default-enabled`, `--comments-enabled`, `--comment-emails-enabled`, `--downloads-enabled`, `--raw-downloads-enabled`, `--publish-date-enabled`, `--search-engine-indexing-enabled`, `--transcripts-enabled`, `--view-count-enabled` |
+| `get <id>` | Get a single video's metadata | `--include-transcript`, `--include-chapters`, `--include-thumbnails`, `--include-exports` |
+| `update <id>` | Update title, description, sharing, playback, dimensions, Studio Sound | `--name`, `--description`, `--link-scope`, `--password`, `--allowed-embed-domains`, `--custom-thumbnail-url`, `--default-playback-rate`, `--dimensions`, `--studio-sound`, boolean settings |
 | `delete <id>` | Delete a video | - |
-| `duplicate <id>` | Duplicate, optionally trimmed | `--name`, `--trim-start-ms`, `--trim-end-ms` |
+| `duplicate <id>` | Duplicate, optionally trimmed | `--name`, `--start-time`, `--end-time`, `--chapter-index`, legacy `--trim-start-ms`, `--trim-end-ms` |
 | `export <id>` | Start an export job | `--resolution` (1080p/4k), `--fps` (30/60), `--speed`, `--granularity` (video/clips/raw), `--subtitles` |
 | `thumbnail <id>` | Get thumbnail/animated preview | `--format` (jpg/png/webp/gif/mp4), `--inpoint-ms`, `--duration-ms`, `--width`, `--height`, `--download`, `--response json` |
 | `add-collaborator <id>` | Add a workspace member | `--email` (required), `--role editor\|viewer` (required) |
+| `update-collaborator <id> <userId>` | Change collaborator role | `--role editor\|viewer` |
+| `remove-collaborator <id> <userId>` | Remove a collaborator | - |
+
+### sources
+
+| Action | Description | Key Flags |
+|--------|-------------|-----------|
+| `create` | Create a source upload and return `sourceId` + `uploadUrl` | `--kind video`, `--width`, `--height`, `--duration` |
 
 ### clips
 
 Most clip commands take `<videoId> <clipId>` as positional args.
+`upload` only takes `<videoId>` and a `--source-id`.
 
 | Action | Description | Key Flags |
 |--------|-------------|-----------|
+| `upload <videoId>` | Add a new clip from an uploaded source | `--source-id` (req), `--name` |
 | `list <videoId>` | List clips for a video | `--fields` |
 | `get <videoId> <clipId>` | Get a single clip | - |
-| `update <videoId> <clipId>` | Rename or reorder | `--name`, `--order` |
+| `update <videoId> <clipId>` | Rename, reorder, replace cuts/background, Studio Sound opt-out | `--name`, `--order`, `--cuts` JSON, `--background` JSON, `--studio-sound` |
 | `delete <videoId> <clipId>` | Delete a clip | - |
 | `duplicate <videoId> <clipId>` | Duplicate the clip | `--name`, `--order` |
-| `cut <videoId> <clipId>` | Cut a time range out | `--from-ms` (req), `--to-ms` (req) |
+| `cut <videoId> <clipId>` | Cut one or more time ranges out | `--from-ms` + `--to-ms`, or `--cuts` JSON |
+| `cut-by-transcript <videoId> <clipId>` | Cut by uncut transcript word indices | `--word-ranges` JSON |
 | `reorder <videoId> <clipId>` | Move to new position | `--order` (req) |
 | `remove-fillers <videoId> <clipId>` | Auto-remove filler words | - |
 | `silences <videoId> <clipId>` | List silent ranges | `--min-duration-ms` |
@@ -118,15 +134,25 @@ Most clip commands take `<videoId> <clipId>` as positional args.
 | `update-highlight <videoId> <clipId> <maskId>` | Update a highlight | mask flags |
 | `remove-highlight <videoId> <clipId> <maskId>` | Remove a highlight | - |
 | `list-layouts <videoId> <clipId>` | List layouts | - |
-| `add-layout <videoId> <clipId>` | Add a layout (JSON shape) | `--layout` (JSON, req), `--start-time-ms`, `--duration-ms`, `--transition-style` |
-| `update-layout <videoId> <clipId> <layoutId>` | Update a layout | `--layout`, time flags, `--transition-style` |
+| `add-layout <videoId> <clipId>` | Add a layout or B-roll media section | `--layout` JSON, `--media` JSON, `--start-time-ms`, `--duration-ms`, `--transition-style spring\|hardCut` |
+| `update-layout <videoId> <clipId> <layoutId>` | Update a layout | `--layout`, `--media`, time flags, `--transition-style` |
 | `remove-layout <videoId> <clipId> <layoutId>` | Remove a layout | - |
+| `generate-auto-layouts <videoId> <clipId>` | Generate AI auto layouts | `--style`, `--instructions` |
 | `list-zooms <videoId> <clipId>` | List zooms | - |
-| `add-zoom <videoId> <clipId>` | Add a zoom | `--type manualZoom\|trackingZoom` (req), `--start-time-ms` (req), `--duration-ms` (req), `--scale`, `--focus-x`, `--focus-y` |
+| `add-zoom <videoId> <clipId>` | Add a zoom | `--type manualZoom\|trackingZoom` (req), `--start-time-ms` (req), `--duration-ms` (req), `--scale` (req), `--focus-x`, `--focus-y` |
 | `update-zoom <videoId> <clipId> <zoomId>` | Update a zoom | same as `add-zoom` |
+| `generate-auto-zooms <videoId> <clipId>` | Generate tracking zooms from clicks | `--intensity slow\|medium\|fast`, `--scale`, `--replace-existing` |
 | `remove-zoom <videoId> <clipId> <zoomId>` | Remove a zoom | - |
+| `list-overlays <videoId> <clipId>` | List image/video overlays | - |
+| `add-overlay <videoId> <clipId>` | Add an image or video overlay | `--start-time-ms`, `--duration-ms`, `--source-id` or `--image-url`, `--width`, `--height`, `--name`, `--point` JSON, `--dimensions` JSON |
+| `update-overlay <videoId> <clipId> <overlayId>` | Update an overlay | time flags, `--name`, `--point`, `--dimensions` |
+| `remove-overlay <videoId> <clipId> <overlayId>` | Remove an overlay | - |
+| `list-sound-effects <videoId> <clipId>` | List sound effects | - |
+| `add-sound-effect <videoId> <clipId>` | Add a sound effect from an uploaded source | `--source-id`, `--start-time-ms`, `--duration-ms`, `--name`, `--volume` |
+| `update-sound-effect <videoId> <clipId> <soundEffectId>` | Update a sound effect | time flags, `--name`, `--volume` |
+| `remove-sound-effect <videoId> <clipId> <soundEffectId>` | Remove a sound effect | - |
 
-Mask coordinates (`--point-*`, `--dim-*`, `--focus-*`) are normalized `0-1` of the canvas.
+Mask coordinates (`--point-*`, `--dim-*`, `--focus-*`) are percentages `0-100` of the canvas/screen.
 
 ### playlists
 
@@ -135,10 +161,15 @@ Mask coordinates (`--point-*`, `--dim-*`, `--focus-*`) are normalized `0-1` of t
 | `list` | List all playlists | `--visibility` (personal/org), `--cursor`, `--limit`, `--fields` |
 | `get <id>` | Get playlist details | - |
 | `create` | Create a new playlist | `--name` (req), `--description`, `--emoji`, `--link-scope`, `--password`, `--visibility`, `--search-engine-indexing-enabled` |
-| `update <id>` | Update a playlist | `--name`, `--description`, `--link-scope`, `--password`, `--search-engine-indexing-enabled` |
+| `update <id>` | Update a playlist | `--name`, `--description`, `--emoji`, `--link-scope`, `--password`, `--search-engine-indexing-enabled` |
 | `delete <id>` | Delete a playlist | - |
 | `add-video <id>` | Add a video to it | `--video-id` (req) |
 | `remove-video <id> <videoId>` | Remove a video from it | - |
+| `list-groups` | List sidebar playlist groups | `--visibility` |
+| `create-group` | Create a sidebar playlist group | `--name`, `--emoji`, `--visibility` |
+| `update-group <id>` | Rename, re-icon, or reorder a group | `--name`, `--emoji`, `--position` |
+| `delete-group <id>` | Delete a group without deleting playlists | - |
+| `move-to-group <playlistId>` | Move/ungroup a playlist | `--group-id`, `--position` |
 
 ### webhooks
 
