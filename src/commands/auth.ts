@@ -45,7 +45,7 @@ authCommand
   .addHelpText("after", "\nExample:\n  tella-cli auth test")
   .action(async () => {
     try {
-      await client.get("/");
+      await client.get("/v1/videos", { limit: "1" });
       log.success("Token is valid");
     } catch (err) {
       handleError(err);
