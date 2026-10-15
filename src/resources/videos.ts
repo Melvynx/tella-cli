@@ -345,6 +345,73 @@ videosResource
   });
 
 videosResource
+  .command("get-export-status")
+  .description("Status and progress of an export (download URL once completed)")
+  .argument("<id>", "Video ID")
+  .argument("<exportId>", "Export ID (slashes allowed, encoded for you)")
+  .option("--json", "Output as JSON")
+  .option("--format <fmt>", "Output format: text, json, csv, yaml")
+  .action(async (id: string, exportId: string, opts: { json?: boolean; format?: string }) => {
+    try {
+      const data = await client.get(`/v1/videos/${id}/exports/${encodeURIComponent(exportId)}`);
+      output(data, { json: opts.json, format: opts.format });
+    } catch (err) {
+      handleError(err, opts.json);
+    }
+  });
+
+videosResource
+  .command("get-chapters")
+  .description("Chapters on the final video timeline (seconds)")
+  .argument("<id>", "Video ID")
+  .option("--json", "Output as JSON")
+  .option("--format <fmt>", "Output format: text, json, csv, yaml")
+  .action(async (id: string, opts: { json?: boolean; format?: string }) => {
+    try {
+      const data = await client.get(`/v1/videos/${id}/chapters`);
+      output(data, { json: opts.json, format: opts.format });
+    } catch (err) {
+      handleError(err, opts.json);
+    }
+  });
+
+videosResource
+  .command("set-chapters")
+  .description("Replace the whole chapter list (seconds, ascending; [] clears)")
+  .argument("<id>", "Video ID")
+  .requiredOption("--chapters <json>", 'e.g. \'[{"title":"Intro","timestampSeconds":0}]\'')
+  .option("--json", "Output as JSON")
+  .option("--format <fmt>", "Output format: text, json, csv, yaml")
+  .action(async (id: string, opts: { chapters: string; json?: boolean; format?: string }) => {
+    try {
+      const data = await client.put(`/v1/videos/${id}/chapters`, { chapters: JSON.parse(opts.chapters) });
+      output(data, { json: opts.json, format: opts.format });
+    } catch (err) {
+      handleError(err, opts.json);
+    }
+  });
+
+videosResource
+  .command("timeline")
+  .description("Ordered timeline outline: clips with video-timeline start, duration and content counts")
+  .argument("<id>", "Video ID")
+  .option("--include <list>", "Extra details to include")
+  .option("--clip-ids <ids>", "Scope details to these clip IDs")
+  .option("--json", "Output as JSON")
+  .option("--format <fmt>", "Output format: text, json, csv, yaml")
+  .action(async (id: string, opts: { include?: string; clipIds?: string; json?: boolean; format?: string }) => {
+    try {
+      const params: Record<string, string> = {};
+      if (opts.include) params.include = opts.include;
+      if (opts.clipIds) params.clipIds = opts.clipIds;
+      const data = await client.get(`/v1/videos/${id}/timeline`, params);
+      output(data, { json: opts.json, format: opts.format });
+    } catch (err) {
+      handleError(err, opts.json);
+    }
+  });
+
+videosResource
   .command("thumbnail")
   .description("Get a video thumbnail or animated preview")
   .argument("<id>", "Video ID")

@@ -389,6 +389,54 @@ clipsResource
   });
 
 clipsResource
+  .command("remove-silences")
+  .description("Cut silent pauses like the editor's Remove silences tool (natural > 800ms, fast > 500ms, faster > 300ms), merged with existing cuts")
+  .argument("<videoId>", "Video ID")
+  .argument("<clipId>", "Clip ID")
+  .option("--mode <mode>", "natural, fast or faster (default natural)")
+  .option("--json", "Output as JSON")
+  .option("--format <fmt>", "Output format: text, json, csv, yaml")
+  .action(async (videoId: string, clipId: string, opts: BaseOpts & { mode?: string }) => {
+    try {
+      const body: Record<string, unknown> = {};
+      if (opts.mode) body.mode = opts.mode;
+      const data = await client.post(
+        `/v1/videos/${videoId}/clips/${clipId}/remove-silences`,
+        body,
+      );
+      output(data, { json: opts.json, format: opts.format });
+    } catch (err) {
+      handleError(err, opts.json);
+    }
+  });
+
+clipsResource
+  .command("transcript")
+  .description("Words the viewer hears (cuts applied), ms on the clip playback, stable word indices")
+  .argument("<videoId>", "Video ID")
+  .argument("<clipId>", "Clip ID")
+  .option("--start-time-ms <ms>", "Window start")
+  .option("--end-time-ms <ms>", "Window end")
+  .option("--view <view>", "words or sentences")
+  .option("--json", "Output as JSON")
+  .option("--format <fmt>", "Output format: text, json, csv, yaml")
+  .action(async (videoId: string, clipId: string, opts: BaseOpts & { startTimeMs?: string; endTimeMs?: string; view?: string }) => {
+    try {
+      const params: Record<string, string> = {};
+      if (opts.startTimeMs) params.startTimeMs = opts.startTimeMs;
+      if (opts.endTimeMs) params.endTimeMs = opts.endTimeMs;
+      if (opts.view) params.view = opts.view;
+      const data = await client.get(
+        `/v1/videos/${videoId}/clips/${clipId}/transcript`,
+        params,
+      );
+      output(data, { json: opts.json, format: opts.format });
+    } catch (err) {
+      handleError(err, opts.json);
+    }
+  });
+
+clipsResource
   .command("silences")
   .description("List silent ranges in a clip")
   .argument("<videoId>", "Video ID")
