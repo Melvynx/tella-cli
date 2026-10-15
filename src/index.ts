@@ -7,13 +7,20 @@ import { clipsResource } from "./resources/clips.js";
 import { playlistsResource } from "./resources/playlists.js";
 import { sourcesResource } from "./resources/sources.js";
 import { webhooksResource } from "./resources/webhooks.js";
+import {
+  analyticsResource,
+  backgroundsResource,
+  libraryResource,
+  presetsResource,
+  tagsResource,
+} from "./resources/generated.js";
 
 const program = new Command();
 
 program
   .name("tella-cli")
   .description("CLI for the Tella video API")
-  .version("0.1.0")
+  .version("0.2.0")
   .option("--json", "Output as JSON", false)
   .option("--format <fmt>", "Output format: text, json, csv, yaml", "text")
   .option("--verbose", "Enable debug logging", false)
@@ -34,5 +41,10 @@ program.addCommand(clipsResource);
 program.addCommand(playlistsResource);
 program.addCommand(sourcesResource);
 program.addCommand(webhooksResource);
+program.addCommand(analyticsResource);
+program.addCommand(backgroundsResource);
+program.addCommand(libraryResource);
+program.addCommand(presetsResource);
+program.addCommand(tagsResource);
 
 program.parse();

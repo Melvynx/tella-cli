@@ -1,6 +1,6 @@
 {
   "name": "tella-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "CLI for the Tella video API - videos, sources, clips, playlists, webhooks. Made with api2cli.dev.",
   "type": "module",
   "bin": {

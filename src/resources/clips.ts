@@ -460,7 +460,7 @@ clipsResource
 
 clipsResource
   .command("transcript-cut")
-  .description("Get the cut (edited) transcript for a clip")
+  .description("Alias of `transcript`: the words the viewer hears (cuts applied). The uncut source transcript is `videos get <id> --include-transcript`")
   .argument("<videoId>", "Video ID")
   .argument("<clipId>", "Clip ID")
   .option("--json", "Output as JSON")
@@ -468,25 +468,7 @@ clipsResource
   .action(async (videoId: string, clipId: string, opts: BaseOpts) => {
     try {
       const data = await client.get(
-        `/v1/videos/${videoId}/clips/${clipId}/transcript/cut`,
-      );
-      output(data, { json: opts.json, format: opts.format });
-    } catch (err) {
-      handleError(err, opts.json);
-    }
-  });
-
-clipsResource
-  .command("transcript-uncut")
-  .description("Get the uncut (original) transcript for a clip")
-  .argument("<videoId>", "Video ID")
-  .argument("<clipId>", "Clip ID")
-  .option("--json", "Output as JSON")
-  .option("--format <fmt>", "Output format: text, json, csv, yaml")
-  .action(async (videoId: string, clipId: string, opts: BaseOpts) => {
-    try {
-      const data = await client.get(
-        `/v1/videos/${videoId}/clips/${clipId}/transcript/uncut`,
+        `/v1/videos/${videoId}/clips/${clipId}/transcript`,
       );
       output(data, { json: opts.json, format: opts.format });
     } catch (err) {

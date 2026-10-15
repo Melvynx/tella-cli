@@ -273,48 +273,6 @@ videosResource
   });
 
 videosResource
-  .command("update-collaborator")
-  .description("Change a collaborator's role on a video")
-  .argument("<id>", "Video ID")
-  .argument("<userId>", "Collaborator user ID")
-  .requiredOption("--role <role>", "editor or viewer")
-  .option("--json", "Output as JSON")
-  .option("--format <fmt>", "Output format: text, json, csv, yaml")
-  .addHelpText(
-    "after",
-    "\nExample:\n  tella-cli videos update-collaborator vid_abc123 user_123 --role viewer",
-  )
-  .action(async (id: string, userId: string, opts: CollabOpts) => {
-    try {
-      const data = await client.patch(`/v1/videos/${id}/collaborators/${userId}`, {
-        role: opts.role,
-      });
-      output(data, { json: opts.json, format: opts.format });
-    } catch (err) {
-      handleError(err, opts.json);
-    }
-  });
-
-videosResource
-  .command("remove-collaborator")
-  .description("Remove a collaborator from a video")
-  .argument("<id>", "Video ID")
-  .argument("<userId>", "Collaborator user ID")
-  .option("--json", "Output as JSON")
-  .addHelpText(
-    "after",
-    "\nExample:\n  tella-cli videos remove-collaborator vid_abc123 user_123",
-  )
-  .action(async (id: string, userId: string, opts: CollabOpts) => {
-    try {
-      await client.delete(`/v1/videos/${id}/collaborators/${userId}`);
-      output({ removed: true, id, userId }, { json: opts.json });
-    } catch (err) {
-      handleError(err, opts.json);
-    }
-  });
-
-videosResource
   .command("export")
   .description("Start an export job for a video")
   .argument("<id>", "Video ID")
